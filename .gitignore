@@ -23,5 +23,6 @@ eggs/
 # GitHub Actions
 .github/workflows/*.yaml
 mats/pdf_plots.ipynb
+mats/AutogluonModels
 
 
