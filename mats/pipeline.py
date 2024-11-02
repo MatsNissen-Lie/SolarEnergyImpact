@@ -81,7 +81,7 @@ class DataPipeline:
                 "Retning": "direction",
                 "Målernavn": "meter_name",
                 "Måler-Id": "meter_id",
-                "Verdi": "value",
+                "Verdi": "value",  # maybe rename to
                 "Tidspunkt": "timestamp",
             },
             inplace=True,
@@ -153,6 +153,10 @@ class DataPipeline:
         main_building_df = pd.merge(
             main_building_import, self.solar_df, on="timestamp", how="left"
         )
+        # remove the unnamed column "Unnamed: 0"
+        main_building_df = main_building_df.loc[
+            :, ~main_building_df.columns.str.contains("^Unnamed")
+        ]
 
         # Replace NaN in 'solar_consumption' with 0
         if "solar_consumption" in main_building_df.columns:
@@ -163,11 +167,42 @@ class DataPipeline:
             main_building_df["solar_consumption"] = 0
 
         # Calculate total consumption including self-consumed solar energy
-        main_building_df["total_consumption"] = (
+        main_building_df["brutto_consumption"] = (
             main_building_df["value"] + main_building_df["solar_consumption"]
         )
 
         return main_building_df
+
+    def get_main_building_all_data(self):
+        # add export to the df
+        df = self.get_main_building_consumption_data()
+        main_building_export = self.get_export_data_for_building(10724)
+        main_building_export = main_building_export.rename(
+            columns={"value": "export_value"}
+        )
+
+        main_building_export = main_building_export[["timestamp", "export_value"]]
+
+        df = pd.merge(df, main_building_export, on="timestamp", how="left")
+        df["export_value"] = df["export_value"].fillna(0)
+        df["net_consumption"] = df["brutto_consumption"] - df["export_value"]
+
+        df = df.rename(columns={"value": "import_value"})
+
+        df = df.drop(["energy_source", "direction", "meter_name"], axis=1)
+
+        ordered = [
+            "timestamp",
+            "import_value",
+            "solar_consumption",
+            "export_value",
+            "brutto_consumption",
+            "net_consumption",
+            "building",
+        ]
+        ordered.extend([col for col in df.columns if col not in ordered])
+        df = df[ordered]
+        return df
 
     def get_reference_buildings_import_data(self):
         """Returns the import data for reference buildings."""
