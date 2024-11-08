@@ -81,7 +81,7 @@ class DataPipeline:
                 "Retning": "direction",
                 "Målernavn": "meter_name",
                 "Måler-Id": "meter_id",
-                "Verdi": "value",  # maybe rename to
+                "Verdi": "value",  # maybe rename to import, export depending on value
                 "Tidspunkt": "timestamp",
             },
             inplace=True,
