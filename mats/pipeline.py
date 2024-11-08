@@ -200,8 +200,8 @@ class DataPipeline:
         ordered = [
             "timestamp",
             "import_value",
-            "solar_consumption",
             "export_value",
+            "solar_consumption",
             "brutto_consumption",
             "net_consumption",
             "building",

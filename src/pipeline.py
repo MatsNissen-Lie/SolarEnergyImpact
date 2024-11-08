@@ -24,6 +24,7 @@ class Pipeline:
         self.energy_path = self.base_path / energy_path
         self.solar_path = self.base_path / solar_path
         self.met_path = self.base_path / met_path
+        self.prediction = self.base_path / "data/prediciton_3features_08_11_2024.csv"
 
         # datasets unaltered
         self.met_df = pd.read_csv(self.met_path)
@@ -73,7 +74,11 @@ class Pipeline:
         # add
 
         self.merge_solar_and_main()
+        self.merge_prediciton()
         self.merge_met()
+
+        self.calculate_columns()
+        self.order_columns()
 
     def process_energy(self):
         self.energy_df.rename(
@@ -122,6 +127,8 @@ class Pipeline:
         )
 
         # add the import values for the other buildings
+        # rename to value_import
+        import_energy.rename(columns={"value": "value_import"}, inplace=True)
         self.a = import_energy[import_energy["property_id"] == 10703]
         self.b = import_energy[import_energy["property_id"] == 4462]
         self.c = import_energy[import_energy["property_id"] == 4746]
@@ -264,6 +271,18 @@ class Pipeline:
     def merge_solar_and_main(self):
         self.main = self.main.merge(self.solar_df, on="timestamp", how="left")
 
+    def merge_prediciton(self):
+        prediction = pd.read_csv(self.prediction)
+        # rename column for with unknow name to predicted_consumption
+        print(prediction)
+        prediction.rename(columns={"value": "predicted_consumption"}, inplace=True)
+        if not prediction.index.equals(self.main.index):
+            raise ValueError("Index does not match")
+        # merge on index. should be good
+        self.main = self.main.merge(
+            prediction, left_index=True, right_index=True, how="left"
+        )
+
     def merge_met(self):
         datasets: pd.DataFrame = [self.main, self.a, self.b, self.c]
         for i, df in enumerate(datasets):
@@ -281,6 +300,124 @@ class Pipeline:
             elif i == 3:
                 self.c = merged
 
+    def get_consumption(
+        self, building: BuilingIdsEnum, freq: str = "D"
+    ) -> pd.DataFrame:
+        """
+        Calculate net energy consumption for a building over a specified frequency.
+
+        Parameters:
+            building (BuilingIdsEnum): The building to calculate consumption for.
+            freq (str): Resampling frequency ('D' for daily, 'W' for weekly, 'Y' for yearly).
+
+        Returns:
+            pd.DataFrame: DataFrame containing net consumption over the specified period.
+        """
+        df = self.get_data(building).copy()
+
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            df.set_index("timestamp", inplace=True)
+
+        agg_funcs = {}
+        to_sum = [
+            "value_import",
+            "value_export",
+            "solar_consumption",
+            "net_consumption",
+            "predicted_consumption",
+        ]
+        met_cols = ["temperature", "wind_speed", "cloud_fraction", "precipitation"]
+        for col in df.columns:
+            if col in to_sum:
+                agg_funcs[col] = "sum"
+            elif col in met_cols:
+                agg_funcs[col] = "mean"
+            else:  # Non-numeric columns
+                agg_funcs[col] = "first"
+
+        # Resample and aggregate
+        df_resampled = df.resample(freq).agg(agg_funcs)
+
+        # Reset index to have 'timestamp' as a column again
+        df_resampled.reset_index(inplace=True)
+
+        return df_resampled
+
+    def get_daily_consumption(self, building: BuilingIdsEnum) -> pd.DataFrame:
+        """
+        Get daily net consumption for a building.
+
+        Parameters:
+            building (BuilingIdsEnum): The building to calculate daily consumption for.
+
+        Returns:
+            pd.DataFrame: DataFrame containing daily net consumption.
+        """
+        return self.get_consumption(building, freq="D")
+
+    def get_weekly_consumption(self, building: BuilingIdsEnum) -> pd.DataFrame:
+        """
+        Get weekly net consumption for a building.
+
+        Parameters:
+            building (BuilingIdsEnum): The building to calculate weekly consumption for.
+
+        Returns:
+            pd.DataFrame: DataFrame containing weekly net consumption.
+        """
+        return self.get_consumption(building, freq="W")
+
+    def get_yearly_consumption(self, building: BuilingIdsEnum) -> pd.DataFrame:
+        """
+        Get yearly net consumption for a building.
+
+        Parameters:
+            building (BuilingIdsEnum): The building to calculate yearly consumption for.
+
+        Returns:
+            pd.DataFrame: DataFrame containing yearly net consumption.
+        """
+        return self.get_consumption(building, freq="Y")
+
+    def calculate_columns(self):
+        self.main["net_consumption"] = (
+            self.main["value_import"]
+            - self.main["value_export"]
+            + self.main["solar_consumption"]
+        )
+        self.a["net_consumption"] = self.a["value_import"]
+        self.b["net_consumption"] = self.b["value_import"]
+        self.c["net_consumption"] = self.c["value_import"]
+
+    def order_columns(self):
+        ordered = [
+            "timestamp",
+            "value_import",
+            "value_export",
+            "solar_consumption",
+            "net_consumption",
+            "predicted_consumption",
+            "building",
+        ]
+        # if str in columns reorder them
+        for i, building in enumerate([self.main, self.a, self.b, self.c]):
+            # for col in building.columns:
+            #     if col in ordered:
+            #         building = building
+            cols = building.columns.tolist()
+            new_order = [col for col in ordered if col in cols]
+            # append all cols that are not in ordered
+            new_order += [col for col in cols if col not in ordered]
+            if i == 0:
+                self.main = building[new_order]
+            elif i == 1:
+                self.a = building[new_order]
+            elif i == 2:
+                self.b = building[new_order]
+            elif i == 3:
+                self.c = building[new_order]
+
     def get_data(self, building: BuilingIdsEnum):
         if building == BuilingIdsEnum.MAIN:
             return self.main
@@ -295,4 +432,5 @@ class Pipeline:
 if __name__ == "__main__":
     p = Pipeline()
     main = p.get_data(BuilingIdsEnum.MAIN)
-    print(main.head())
+    daily_main = p.get_daily_consumption(BuilingIdsEnum.MAIN)
+    print(daily_main.head())

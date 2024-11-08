@@ -69,8 +69,8 @@ def plot_energy_usage(
         # Add fill area if tozeroy is True
         if tozeroy:
             # color make the opacity of the fill area 0.3
-            fill_color = color[:-2] + "0.3)"
-            print(fill_color)
+            fill_color = color[:-4] + "0.3)"
+            print("add trace", fill_color)
             fig.add_trace(
                 go.Scatter(
                     x=df_display.index.tolist(),
@@ -83,15 +83,6 @@ def plot_energy_usage(
                 )
             )
 
-    # Add layout details
-    fig.update_layout(
-        title="Time Series Plot",
-        xaxis_title="Date",
-        yaxis_title="Value",
-        hovermode="x unified",
-        showlegend=True,
-        height=600,
-    )
     # Add layout details
     fig.update_layout(
         title=titel,
