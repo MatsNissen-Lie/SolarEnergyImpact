@@ -70,7 +70,6 @@ def plot_energy_usage(
         if tozeroy:
             # color make the opacity of the fill area 0.3
             fill_color = color[:-4] + "0.3)"
-            print("add trace", fill_color)
             fig.add_trace(
                 go.Scatter(
                     x=df_display.index.tolist(),
