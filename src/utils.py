@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -122,6 +123,18 @@ def plot_energy_usage(
             type="date",
         )
     )
-
-    # Show the plot
     fig.show()
+
+    # output_file = True
+    # if output_file:
+    #     # Ensure kaleido is installed
+    #     output_file = titel.replace(" ", "_").lower()
+    #     output_file = f"images/{output_file}.png"
+    #     # if the file exists add 1 or more to the end of the file name
+    #     if not os.path.exists(f"{output_file}.png"):
+    #         try:
+    #             fig.write_image("output.png", engine="kaleido")
+    #             print(f"Figure saved as {output_file}")
+    #         except Exception as e:
+    #             print(f"An error occurred while saving the figure: {e}")
+    # Otherwise, display the interactive figure

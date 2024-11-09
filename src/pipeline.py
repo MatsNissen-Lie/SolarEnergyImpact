@@ -5,6 +5,8 @@ import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
+from utils import ColumnParam
+
 
 class BuilingIdsEnum(Enum):  # name: building_id
     MAIN = 10724
@@ -25,6 +27,8 @@ class Pipeline:
         self.solar_path = self.base_path / solar_path
         self.met_path = self.base_path / met_path
         self.prediction = self.base_path / "data/prediciton_3features_08_11_2024.csv"
+        self.prediction = self.base_path / "data/pred/prediction_drita.csv"
+        self.prediction = self.base_path / "data/pred/prediction_drita2.csv"
 
         # datasets unaltered
         self.met_df = pd.read_csv(self.met_path)
@@ -151,6 +155,8 @@ class Pipeline:
             for col in ["value_import", "value_export"]:
                 if col in df_resampled.columns:
                     df_resampled[col] = df_resampled[col].interpolate(method="linear")
+                    # df_resampled[col] = df_resampled[col].ffill()
+                    # df_resampled[col] = df_resampled[col].bfill()
 
             df.reset_index(inplace=True)
             df.update(df_resampled.reset_index())
@@ -168,7 +174,6 @@ class Pipeline:
         )
 
         # Corrected line to reassign the grouped result
-        # self.solar_df = self.solar_df.groupby("timestamp", as_index=False)
         self.solar_df = self.solar_df.groupby("timestamp", as_index=False).aggregate(
             {"solar_consumption": "sum"}
         )
@@ -273,8 +278,9 @@ class Pipeline:
 
     def merge_prediciton(self):
         prediction = pd.read_csv(self.prediction)
-        # rename column for with unknow name to predicted_consumption
-        prediction.rename(columns={"value": "predicted_consumption"}, inplace=True)
+        prediction.rename(
+            columns={prediction.columns[0]: "predicted_consumption"}, inplace=True
+        )
         if not prediction.index.equals(self.main.index):
             raise ValueError("Index does not match")
         # merge on index. should be good
@@ -307,7 +313,7 @@ class Pipeline:
 
         Parameters:
             building (BuilingIdsEnum): The building to calculate consumption for.
-            freq (str): Resampling frequency ('D' for daily, 'W' for weekly, 'Y' for yearly).
+            freq (str): Resampling frequency ('D' for daily, 'W' for weekly, 'Y' for monthly).
 
         Returns:
             pd.DataFrame: DataFrame containing net consumption over the specified period.
@@ -368,17 +374,17 @@ class Pipeline:
         """
         return self.get_consumption(building, freq="W")
 
-    def get_yearly_consumption(self, building: BuilingIdsEnum) -> pd.DataFrame:
+    def get_monthly_consumption(self, building: BuilingIdsEnum) -> pd.DataFrame:
         """
-        Get yearly net consumption for a building.
+        Get monthly net consumption for a building.
 
         Parameters:
-            building (BuilingIdsEnum): The building to calculate yearly consumption for.
+            building (BuilingIdsEnum): The building to calculate monthly consumption for.
 
         Returns:
-            pd.DataFrame: DataFrame containing yearly net consumption.
+            pd.DataFrame: DataFrame containing monthly net consumption.
         """
-        return self.get_consumption(building, freq="Y")
+        return self.get_consumption(building, freq="ME")
 
     def calculate_columns(self):
         self.main["net_consumption"] = (
@@ -436,9 +442,49 @@ class Pipeline:
         elif building == BuilingIdsEnum.C:
             return self.c
 
+    def select_and_merge_datasets(self, cols=["net_consumption_per_sqm"], periode="d"):
+        """
+        Select and merge datasets for all buildings.
+
+        Parameters:
+            cols (list[str]): List of columns to select.
+            periode (str): The period to calculate consumption for ('d' for daily, 'w' for weekly, 'm' for monthly).
+
+        """
+        if periode == "d":
+            get_data = self.get_daily_consumption
+        elif periode == "w":
+            get_data = self.get_weekly_consumption
+        elif periode == "m":
+            get_data = self.get_monthly_consumption
+        else:
+            raise ValueError("Invalid period. Must be 'd', 'w', or 'm'.")
+        dfs = [get_data(building) for building in BuilingIdsEnum]
+        merged_df = None
+
+        col_params = []
+        for i, data in enumerate(dfs):
+            name = data["building"].unique()[0].lower().replace(" ", "_")
+            data = data[["timestamp"] + cols]
+            if i == 0:
+                merged_df = data
+            else:
+                merged_df = merged_df.merge(
+                    data,
+                    on="timestamp",
+                    suffixes=("", "_" + name),
+                )
+            col_params.extend(
+                [ColumnParam(col + "_" + name if i != 0 else col, name) for col in cols]
+            )
+
+        return merged_df, col_params
+
 
 if __name__ == "__main__":
     p = Pipeline()
     main = p.get_data(BuilingIdsEnum.MAIN)
-    daily_main = p.get_daily_consumption(BuilingIdsEnum.MAIN)
-    print(daily_main.head())
+    # daily_main = p.get_daily_consumption(BuilingIdsEnum.MAIN)
+    select_and_merge_datasets = p.select_and_merge_datasets()
+    print(select_and_merge_datasets[0].head())
+    print([param.column for param in select_and_merge_datasets[1]])
