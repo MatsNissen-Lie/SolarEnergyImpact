@@ -274,7 +274,6 @@ class Pipeline:
     def merge_prediciton(self):
         prediction = pd.read_csv(self.prediction)
         # rename column for with unknow name to predicted_consumption
-        print(prediction)
         prediction.rename(columns={"value": "predicted_consumption"}, inplace=True)
         if not prediction.index.equals(self.main.index):
             raise ValueError("Index does not match")
@@ -326,6 +325,7 @@ class Pipeline:
             "solar_consumption",
             "net_consumption",
             "predicted_consumption",
+            "net_consumption_per_sqm",
         ]
         met_cols = ["temperature", "wind_speed", "cloud_fraction", "precipitation"]
         for col in df.columns:
@@ -389,6 +389,13 @@ class Pipeline:
         self.a["net_consumption"] = self.a["value_import"]
         self.b["net_consumption"] = self.b["value_import"]
         self.c["net_consumption"] = self.c["value_import"]
+        # add net_consumption per square meter
+        self.main["net_consumption_per_sqm"] = (
+            self.main["net_consumption"] / self.main["area"]
+        )
+        self.a["net_consumption_per_sqm"] = self.a["net_consumption"] / self.a["area"]
+        self.b["net_consumption_per_sqm"] = self.b["net_consumption"] / self.b["area"]
+        self.c["net_consumption_per_sqm"] = self.c["net_consumption"] / self.c["area"]
 
     def order_columns(self):
         ordered = [
@@ -397,6 +404,7 @@ class Pipeline:
             "value_export",
             "solar_consumption",
             "net_consumption",
+            "net_consumption_per_sqm",
             "predicted_consumption",
             "building",
         ]
