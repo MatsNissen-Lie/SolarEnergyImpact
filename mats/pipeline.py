@@ -81,7 +81,7 @@ class DataPipeline:
                 "Retning": "direction",
                 "Målernavn": "meter_name",
                 "Måler-Id": "meter_id",
-                "Verdi": "value",  # maybe rename to
+                "Verdi": "value",  # maybe rename to import, export depending on value
                 "Tidspunkt": "timestamp",
             },
             inplace=True,
@@ -200,8 +200,8 @@ class DataPipeline:
         ordered = [
             "timestamp",
             "import_value",
-            "solar_consumption",
             "export_value",
+            "solar_consumption",
             "brutto_consumption",
             "net_consumption",
             "building",

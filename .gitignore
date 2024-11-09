@@ -19,6 +19,7 @@ eggs/
 *.egg-info/
 .installed.cfg
 *.egg
+src/predictor/AutogluonModels
 
 # GitHub Actions
 .github/workflows/*.yaml
