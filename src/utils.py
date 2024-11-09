@@ -14,6 +14,15 @@ COLORS = [
     "rgba(255, 182, 193, 0.9)",  # Light Pin
     "rgba(250, 250, 210, 0.9)",  # Light Goldenrod Yellow
 ]
+COLORS_DARK = [
+    "rgba(255, 0, 0, 0.9)",  # Red
+    "rgba(0, 0, 255, 0.9)",  # Blue
+    "rgba(0, 128, 0, 0.9)",  # Green
+    "rgba(255, 165, 0, 0.9)",  # Orange
+    "rgba(128, 0, 128, 0.9)",  # Purplen
+    # "rgba(0, 191, 255, 0.9)",  # Deep Sky Blue
+]
+
 FILL_COLORS = [
     "rgba(255, 99, 71, 0.3)",
     "rgba(30, 144, 255, 0.3)",
@@ -35,6 +44,7 @@ def plot_energy_usage(
     titel="Actual vs Forecasted Energy Usage",
     yaxis_title="Energy Usage (kWh)",
     tozeroy=True,
+    dark_mode=False,
 ) -> None:
     # df_display = pd.DataFrame(df_display.copy()[["actual", "prediction", "timestamp"]])
     if "timestamp" not in df_display.columns:
@@ -52,7 +62,10 @@ def plot_energy_usage(
             raise ValueError(f"Column '{column}' not found in the DataFrame.")
 
         # Get the color for this column
-        color = COLORS[idx % len(COLORS)]
+        if dark_mode:
+            color = COLORS_DARK[idx % len(COLORS_DARK)]
+        else:
+            color = COLORS[idx % len(COLORS)]
         # fill_color = fill_colors[idx % len(fill_colors)]
 
         # Add trace for the column
