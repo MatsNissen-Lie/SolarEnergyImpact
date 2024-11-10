@@ -242,6 +242,8 @@ class Pipeline:
         group.ffill(inplace=True)
         group.bfill(inplace=True)
 
+        group.reset_index(inplace=True)
+
         return group
 
     def interpolate_circular(self, df, column):
@@ -434,13 +436,13 @@ class Pipeline:
 
     def get_data(self, building: BuilingIdsEnum):
         if building == BuilingIdsEnum.MAIN:
-            return self.main
+            return self.main.copy()
         elif building == BuilingIdsEnum.A:
-            return self.a
+            return self.a.copy()
         elif building == BuilingIdsEnum.B:
-            return self.b
+            return self.b.copy()
         elif building == BuilingIdsEnum.C:
-            return self.c
+            return self.c.copy()
 
     def select_and_merge_datasets(self, cols=["net_consumption_per_sqm"], periode="d"):
         """
@@ -474,8 +476,9 @@ class Pipeline:
                     on="timestamp",
                     suffixes=("", "_" + name),
                 )
+            col_names = [col + "_" + name if i != 0 else col for col in cols]
             col_params.extend(
-                [ColumnParam(col + "_" + name if i != 0 else col, name) for col in cols]
+                [ColumnParam(col, name.replace("_", " ")) for col in col_names]
             )
 
         return merged_df, col_params
