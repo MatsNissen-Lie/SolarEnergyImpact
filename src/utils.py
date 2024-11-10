@@ -9,11 +9,12 @@ column_param: list[dict[str, str]] = [
     },
 ]
 COLORS = [
-    "rgba(255, 99, 71, 0.9)",
+    "rgba(255, 90, 71, 0.9)",
     "rgba(30, 144, 255, 0.9)",
-    "rgba(144, 238, 144, 0.9)",  # Light Green
+    "rgba(20, 208, 104, 0.9)",  # Light Green
+    "rgba(120, 0, 128, 0.9)",  # Purplen
+    # "rgba(250, 250, 210, 0.9)",  # Light Goldenrod Yellow
     "rgba(255, 182, 193, 0.9)",  # Light Pin
-    "rgba(250, 250, 210, 0.9)",  # Light Goldenrod Yellow
 ]
 COLORS_DARK = [
     "rgba(255, 0, 0, 0.9)",  # Red
@@ -99,7 +100,7 @@ def plot_energy_usage(
     # Add layout details
     fig.update_layout(
         title=titel,
-        xaxis_title="Date",
+        xaxis_title="Datetime",
         yaxis_title=yaxis_title,
         hovermode="x unified",
         showlegend=True,
