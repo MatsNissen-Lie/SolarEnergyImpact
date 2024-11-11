@@ -26,9 +26,11 @@ class Pipeline:
         self.energy_path = self.base_path / energy_path
         self.solar_path = self.base_path / solar_path
         self.met_path = self.base_path / met_path
-        self.prediction = self.base_path / "data/prediciton_3features_08_11_2024.csv"
-        self.prediction = self.base_path / "data/pred/prediction_drita.csv"
+        # self.prediction = self.base_path / "data/prediciton_3features_08_11_2024.csv"
+        # self.prediction = self.base_path / "data/pred/prediction_drita.csv"
         self.prediction = self.base_path / "data/pred/prediction_drita2.csv"
+        self.energy_prices_path = self.base_path / "data/energy_prices.csv"
+        self.eurnok_path = self.base_path / "data/eurnok.csv"
 
         # datasets unaltered
         self.met_df = pd.read_csv(self.met_path)
@@ -83,6 +85,9 @@ class Pipeline:
 
         self.calculate_columns()
         self.order_columns()
+
+        # add spot prices
+        self.merge_spot_prices()
 
     def process_energy(self):
         self.energy_df.rename(
@@ -223,6 +228,54 @@ class Pipeline:
             # plt.tight_layout()
             # plt.show()
 
+    def process_spot_prices(self):
+
+        # Read the spot prices
+        spot_prices = pd.read_csv(self.energy_prices_path, sep=";")
+        # HourUTC;HourDK;PriceArea;SpotPriceDKK;SpotPriceEUR
+        print(spot_prices.columns)
+        # select the relevant columns
+        spot_prices = spot_prices[["HourDK", "SpotPriceEUR"]]
+        spot_prices.rename(
+            columns={"SpotPriceEUR": "spot_price_eur", "HourDK": "timestamp"},
+            inplace=True,
+        )
+        spot_prices["timestamp"] = pd.to_datetime(spot_prices["timestamp"])
+        # 97,269997 trun spot price to float
+        spot_prices["spot_price_eur"] = (
+            spot_prices["spot_price_eur"].str.replace(",", ".").astype(float)
+        )
+
+        spot_prices = spot_prices.groupby("timestamp").mean().reset_index()
+        spot_prices = spot_prices.set_index("timestamp").resample("h").ffill()
+        spot_prices.reset_index(inplace=True)
+
+        # merge with dataset a and fill sopot price with the last value ffill
+        a_dates = self.a["timestamp"]
+        spot_prices = spot_prices.merge(a_dates, on="timestamp", how="outer")
+        spot_prices["spot_price_eur"] = spot_prices["spot_price_eur"].ffill()
+
+        eur_nok = pd.read_csv(self.eurnok_path)
+        # datetime,open,high,low,close
+        eur_nok = eur_nok[["datetime", "close"]]
+        eur_nok.rename(
+            columns={"datetime": "timestamp", "close": "eur_nok"}, inplace=True
+        )
+        eur_nok["timestamp"] = pd.to_datetime(eur_nok["timestamp"])
+
+        spot_prices = spot_prices.merge(eur_nok, on="timestamp", how="left")
+        spot_prices["eur_nok"] = spot_prices["eur_nok"].ffill()
+        spot_prices["spot_price_nok"] = (
+            spot_prices["spot_price_eur"] * spot_prices["eur_nok"]
+        )
+        # drop eur_nok and spot_price_eur
+        spot_prices.drop(["eur_nok", "spot_price_eur"], axis=1, inplace=True)
+
+        # mwatthour to kwh
+        spot_prices["spot_price_nok"] = spot_prices["spot_price_nok"] / 1000
+
+        return spot_prices
+
     def process_property_group(self, group: pd.DataFrame) -> pd.DataFrame:
 
         group = group.reset_index(drop=True)
@@ -241,6 +294,8 @@ class Pipeline:
 
         group.ffill(inplace=True)
         group.bfill(inplace=True)
+
+        group.reset_index(inplace=True)
 
         return group
 
@@ -296,6 +351,20 @@ class Pipeline:
             merged = pd.merge(df, met, on="timestamp", how="left")
 
             # df.update(merged) # this does not work for some reason, quick fix
+            if i == 0:
+                self.main = merged
+            elif i == 1:
+                self.a = merged
+            elif i == 2:
+                self.b = merged
+            elif i == 3:
+                self.c = merged
+
+    def merge_spot_prices(self):
+        datasets = [self.main, self.a, self.b, self.c]
+        spot_prices = self.process_spot_prices()
+        for i, df in enumerate(datasets):
+            merged = pd.merge(df, spot_prices, on="timestamp", how="left")
             if i == 0:
                 self.main = merged
             elif i == 1:
@@ -434,13 +503,13 @@ class Pipeline:
 
     def get_data(self, building: BuilingIdsEnum):
         if building == BuilingIdsEnum.MAIN:
-            return self.main
+            return self.main.copy()
         elif building == BuilingIdsEnum.A:
-            return self.a
+            return self.a.copy()
         elif building == BuilingIdsEnum.B:
-            return self.b
+            return self.b.copy()
         elif building == BuilingIdsEnum.C:
-            return self.c
+            return self.c.copy()
 
     def select_and_merge_datasets(self, cols=["net_consumption_per_sqm"], periode="d"):
         """
@@ -451,7 +520,9 @@ class Pipeline:
             periode (str): The period to calculate consumption for ('d' for daily, 'w' for weekly, 'm' for monthly).
 
         """
-        if periode == "d":
+        if periode == "h":
+            get_data = self.get_data
+        elif periode == "d":
             get_data = self.get_daily_consumption
         elif periode == "w":
             get_data = self.get_weekly_consumption
@@ -465,7 +536,8 @@ class Pipeline:
         col_params = []
         for i, data in enumerate(dfs):
             name = data["building"].unique()[0].lower().replace(" ", "_")
-            data = data[["timestamp"] + cols]
+            filted_cols = [col for col in cols if col in data.columns]
+            data = data[["timestamp"] + filted_cols]
             if i == 0:
                 merged_df = data
             else:
@@ -474,8 +546,9 @@ class Pipeline:
                     on="timestamp",
                     suffixes=("", "_" + name),
                 )
+            col_names = [col + "_" + name if i != 0 else col for col in filted_cols]
             col_params.extend(
-                [ColumnParam(col + "_" + name if i != 0 else col, name) for col in cols]
+                [ColumnParam(col, name.replace("_", " ")) for col in col_names]
             )
 
         return merged_df, col_params
@@ -485,6 +558,10 @@ if __name__ == "__main__":
     p = Pipeline()
     main = p.get_data(BuilingIdsEnum.MAIN)
     # daily_main = p.get_daily_consumption(BuilingIdsEnum.MAIN)
-    select_and_merge_datasets = p.select_and_merge_datasets()
-    print(select_and_merge_datasets[0].head())
-    print([param.column for param in select_and_merge_datasets[1]])
+    select_and_merge_datasets = p.select_and_merge_datasets(
+        ["value_import", "solar_consumption"], periode="h"
+    )
+    print(select_and_merge_datasets[0].tail())
+
+    res = p.process_spot_prices()
+    print(res)
