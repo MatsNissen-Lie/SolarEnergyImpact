@@ -1,7 +1,10 @@
 {
   "terminal.integrated.env.osx": {
     "PYTHONPATH": "${workspaceFolder}"
-  }
+  },
+  "python.analysis.extraPaths": [
+    "./src"
+  ]
 }
 
 // conda config --set auto_activate_base false
