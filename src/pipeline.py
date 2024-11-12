@@ -5,6 +5,8 @@ import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
+# from src.utils import ColumnParam
+
 from utils import ColumnParam
 
 
@@ -26,9 +28,9 @@ class Pipeline:
         self.energy_path = self.base_path / energy_path
         self.solar_path = self.base_path / solar_path
         self.met_path = self.base_path / met_path
-        # self.prediction = self.base_path / "data/prediciton_3features_08_11_2024.csv"
-        # self.prediction = self.base_path / "data/pred/prediction_drita.csv"
-        self.prediction = self.base_path / "data/pred/prediction_drita2.csv"
+        # self.prediction_path = self.base_path / "data/prediciton_3features_08_11_2024.csv"
+        self.prediction_path = self.base_path / "data/pred/prediction_drita2.csv"
+        # self.prediction_path = self.base_path / "data/pred/prediction_main_b.csv"
         self.energy_prices_path = self.base_path / "data/energy_prices.csv"
         self.eurnok_path = self.base_path / "data/eurnok.csv"
 
@@ -233,7 +235,7 @@ class Pipeline:
         # Read the spot prices
         spot_prices = pd.read_csv(self.energy_prices_path, sep=";")
         # HourUTC;HourDK;PriceArea;SpotPriceDKK;SpotPriceEUR
-        print(spot_prices.columns)
+
         # select the relevant columns
         spot_prices = spot_prices[["HourDK", "SpotPriceEUR"]]
         spot_prices.rename(
@@ -332,12 +334,22 @@ class Pipeline:
         self.main = self.main.merge(self.solar_df, on="timestamp", how="left")
 
     def merge_prediciton(self):
-        prediction = pd.read_csv(self.prediction)
+        prediction = pd.read_csv(self.prediction_path)
         prediction.rename(
             columns={prediction.columns[0]: "predicted_consumption"}, inplace=True
         )
         if not prediction.index.equals(self.main.index):
             raise ValueError("Index does not match")
+
+        avf_pred = prediction["predicted_consumption"].mean()
+        # print("average prediction", avf_pred)
+        if avf_pred < 1:
+            # print("scaling prediction", avf_pred)
+
+            area = self.building_areas[10724]
+            prediction["predicted_consumption"] = (
+                prediction["predicted_consumption"] * area
+            )
         # merge on index. should be good
         self.main = self.main.merge(
             prediction, left_index=True, right_index=True, how="left"
@@ -561,7 +573,8 @@ if __name__ == "__main__":
     select_and_merge_datasets = p.select_and_merge_datasets(
         ["value_import", "solar_consumption"], periode="h"
     )
+
     print(select_and_merge_datasets[0].tail())
 
     res = p.process_spot_prices()
-    print(res)
+    # print(res)
