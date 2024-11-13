@@ -1,13 +1,20 @@
 from enum import Enum
+import sys
 import numpy as np
 import pandas as pd
 import datetime
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-# from src.utils import ColumnParam
+
+# sys add path
+folder = Path().resolve().absolute().parent
+sys.path.append(str(folder))
 
 from utils import ColumnParam
+
+
+# from src.utils import ColumnParam
 
 
 class BuilingIdsEnum(Enum):  # name: building_id
@@ -28,9 +35,13 @@ class Pipeline:
         self.energy_path = self.base_path / energy_path
         self.solar_path = self.base_path / solar_path
         self.met_path = self.base_path / met_path
-        # self.prediction_path = self.base_path / "data/prediciton_3features_08_11_2024.csv"
+        self.prediction_path = (
+            self.base_path / "data/prediciton_3features_08_11_2024.csv"
+        )
         self.prediction_path = self.base_path / "data/pred/prediction_drita2.csv"
         # self.prediction_path = self.base_path / "data/pred/prediction_main_b.csv"
+        # self.prediction_path = self.base_path / "data/pred/prediction_b.csv"
+        self.prediction_path = self.base_path / "data/pred/prediction_winter.csv"
         self.energy_prices_path = self.base_path / "data/energy_prices.csv"
         self.eurnok_path = self.base_path / "data/eurnok.csv"
 
