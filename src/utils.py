@@ -20,8 +20,8 @@ COLORS_DARK = [
     "rgba(255, 0, 0, 0.9)",  # Red
     "rgba(0, 0, 255, 0.9)",  # Blue
     "rgba(0, 128, 0, 0.9)",  # Green
-    "rgba(128, 0, 128, 0.9)",  # Purplen
     "rgba(255, 165, 0, 0.9)",  # Orange
+    "rgba(128, 0, 128, 0.9)",  # Purplen
     # "rgba(0, 191, 255, 0.9)",  # Deep Sky Blue
 ]
 
