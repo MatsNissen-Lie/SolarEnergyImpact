@@ -35,11 +35,13 @@ class Pipeline:
         self.energy_path = self.base_path / energy_path
         self.solar_path = self.base_path / solar_path
         self.met_path = self.base_path / met_path
-        # self.prediction_path = self.base_path / "data/pred/prediction_drita2.csv"
         # self.prediction_path = self.base_path / "data/pred/prediction_main_b.csv"
         # self.prediction_path = self.base_path / "data/pred/prediction_b.csv"
         # self.prediction_path = (self.base_path / "data/pred/prediction_winter2_20241113_20.csv")
+        # self.prediction_path = self.base_path / "data/pred/prediction_winter.csv"
+        self.prediction_path = self.base_path / "data/pred/prediction_winter3.csv"
         self.prediction_path = self.base_path / "data/pred/prediction_winter.csv"
+        self.prediction_path = self.base_path / "data/pred/prediction_drita2.csv"
         self.energy_prices_path = self.base_path / "data/energy_prices.csv"
         self.eurnok_path = self.base_path / "data/eurnok.csv"
 
