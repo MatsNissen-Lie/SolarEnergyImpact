@@ -36,8 +36,8 @@ FILL_COLORS = [
 
 class ColumnParam:
     def __init__(self, column: str, name: str):
-        self.name = name
         self.column = column
+        self.name = name
 
 
 def plot_energy_usage(
