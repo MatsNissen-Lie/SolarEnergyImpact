@@ -9,7 +9,8 @@ column_param: list[dict[str, str]] = [
     },
 ]
 COLORS = [
-    "rgba(255, 90, 71, 0.9)",
+    # "rgba(255, 90, 71, 0.9)",
+    "rgba(255, 0, 0, 0.75)",  # Red
     "rgba(30, 144, 255, 0.9)",
     "rgba(20, 208, 104, 0.9)",  # Light Green
     "rgba(255, 165, 0, 0.8)",  # Orange
